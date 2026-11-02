@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
 		<title>肥鱼大亨</title>
 		<style>
 html, body, #canvas {
@@ -89,12 +89,130 @@ body {
 	text-align: center;
 	z-index: 1;
 }
+/*
+ * MOBILE-LANDSCAPE-PATCH v1  (start)
+ * Godot re-export overwrites index.html: re-apply this block after every export.
+ * Purpose: the project is 1600x720 (20:9) with stretch/aspect=keep, so a phone in
+ * portrait shows the game as a single narrow strip. This gate asks the player to
+ * rotate (and offers one-tap fullscreen + landscape lock where supported).
+ */
+#rotate-gate {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	z-index: 9999;
+	display: none;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 1.1rem;
+	box-sizing: border-box;
+	padding: 2rem;
+	background-color: #05070d;
+	color: #eaf2ff;
+	font-family: 'Noto Sans', 'Droid Sans', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+	text-align: center;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+#rotate-gate.show {
+	display: flex;
+}
+
+#rotate-gate .rg-icon {
+	width: 84px;
+	height: 84px;
+	animation: rg-tilt 2.6s ease-in-out infinite;
+}
+
+@keyframes rg-tilt {
+	0%, 35% {
+		transform: rotate(0deg);
+	}
+	65%, 100% {
+		transform: rotate(-90deg);
+	}
+}
+
+#rotate-gate h1 {
+	margin: 0;
+	font-size: 1.35rem;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+}
+
+#rotate-gate p {
+	margin: 0;
+	max-width: 21rem;
+	font-size: 0.88rem;
+	line-height: 1.65;
+	color: #8fa3c0;
+}
+
+#rotate-gate .rg-btn {
+	appearance: none;
+	-webkit-appearance: none;
+	border: 0;
+	border-radius: 999px;
+	padding: 0.85rem 2rem;
+	font-family: inherit;
+	font-size: 1rem;
+	font-weight: 600;
+	color: #04121f;
+	background-color: #8fe3ff;
+	background-image: linear-gradient(180deg, #a9ecff, #35b6f0);
+	box-shadow: 0 8px 24px rgba(53, 182, 240, 0.35);
+}
+
+#rotate-gate .rg-btn:active {
+	transform: scale(0.97);
+}
+
+#rotate-gate .rg-skip {
+	appearance: none;
+	-webkit-appearance: none;
+	border: 0;
+	background: none;
+	padding: 0.4rem 0.8rem;
+	font-family: inherit;
+	font-size: 0.82rem;
+	color: #6d7f99;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+#rotate-gate .rg-tip {
+	display: none;
+	color: #ffcc66;
+}
+
+#rotate-gate .rg-tip.show {
+	display: block;
+}
+/* MOBILE-LANDSCAPE-PATCH v1  (end) */
 		</style>
-		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
-<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png?v=2" />
+<link rel="apple-touch-icon" sizes="180x180" href="index.apple-touch-icon.png?v=2"/>
 
 	</head>
 	<body>
+		<!-- MOBILE-LANDSCAPE-PATCH v1 -->
+		<div id="rotate-gate">
+			<svg class="rg-icon" viewBox="0 0 100 100" aria-hidden="true">
+				<rect x="32" y="12" width="36" height="76" rx="8" fill="none" stroke="#8fe3ff" stroke-width="4"></rect>
+				<circle cx="50" cy="79" r="3" fill="#35b6f0"></circle>
+			</svg>
+			<h1>请横屏游玩</h1>
+			<p>本作是 20:9 的横屏画面。手机上把设备横过来，或点下面的按钮进入全屏横屏；电脑请把浏览器窗口拉宽。</p>
+			<button type="button" id="rg-enter" class="rg-btn">全屏横屏开始</button>
+			<p id="rg-tip" class="rg-tip">这个浏览器不支持自动锁定横屏。请先关掉手机的“竖屏锁定”，再把手机横过来。</p>
+			<button type="button" id="rg-skip" class="rg-skip">仍要竖屏试玩</button>
+		</div>
+
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -213,6 +331,111 @@ const engine = new Engine(GODOT_CONFIG);
 			setStatusMode('hidden');
 		}, displayFailureNotice);
 	}
+}());
+		</script>
+		<script>
+/* ===== MOBILE-LANDSCAPE-PATCH v1 ===== */
+(function () {
+	var gate = document.getElementById('rotate-gate');
+	if (!gate) {
+		return;
+	}
+	var tip = document.getElementById('rg-tip');
+	var enterBtn = document.getElementById('rg-enter');
+	var skipBtn = document.getElementById('rg-skip');
+	var mqPortrait = window.matchMedia('(orientation: portrait)');
+	var mqCoarse = window.matchMedia('(pointer: coarse)');
+	var SKIP_KEY = 'fydh.landscapeGate.skip';
+	var skipped = false;
+
+	try {
+		skipped = window.sessionStorage.getItem(SKIP_KEY) === '1';
+	} catch (err) {
+		skipped = false;
+	}
+
+	// Gate only where a 20:9 picture cannot fit: touch devices in portrait,
+	// or a very narrow desktop window. Append #rotate to the URL to force it
+	// on desktop for a visual check.
+	function needsGate() {
+		var narrow = (window.innerWidth || 0) < 600;
+		var forced = window.location.hash === '#rotate';
+		return !skipped && (forced || (mqPortrait.matches && (mqCoarse.matches || narrow)));
+	}
+
+	function sync() {
+		gate.classList.toggle('show', needsGate());
+	}
+
+	function requestFullscreen() {
+		var el = document.documentElement;
+		var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+		if (!fn) {
+			return Promise.reject(new Error('fullscreen api unavailable'));
+		}
+		try {
+			var ret = fn.call(el, { navigationUI: 'hide' });
+			return ret && typeof ret.then === 'function' ? ret : Promise.resolve();
+		} catch (err) {
+			return Promise.reject(err);
+		}
+	}
+
+	function lockLandscape() {
+		var so = window.screen && window.screen.orientation;
+		if (!so || typeof so.lock !== 'function') {
+			return Promise.reject(new Error('orientation lock unavailable'));
+		}
+		try {
+			var ret = so.lock('landscape');
+			return ret && typeof ret.then === 'function' ? ret : Promise.resolve();
+		} catch (err) {
+			return Promise.reject(err);
+		}
+	}
+
+	// Fullscreen and orientation lock are only allowed inside a user gesture.
+	enterBtn.addEventListener('click', function () {
+		tip.classList.remove('show');
+		requestFullscreen().catch(function (err) {
+			console.warn('[rotate-gate] fullscreen failed:', err && err.message);
+		}).then(lockLandscape).then(function () {
+			window.setTimeout(sync, 400);
+		}).catch(function (err) {
+			// iOS Safari / Firefox: no lock. Keep the gate and ask for a manual rotate.
+			console.warn('[rotate-gate] landscape lock failed:', err && err.message);
+			tip.classList.add('show');
+			window.setTimeout(sync, 400);
+		});
+	});
+
+	skipBtn.addEventListener('click', function () {
+		skipped = true;
+		try {
+			window.sessionStorage.setItem(SKIP_KEY, '1');
+		} catch (err) {
+			// Private mode: the choice holds for this page view only.
+		}
+		sync();
+	});
+
+	function syncSoon() {
+		window.setTimeout(sync, 120);
+	}
+
+	window.addEventListener('resize', syncSoon);
+	window.addEventListener('orientationchange', syncSoon);
+	window.addEventListener('hashchange', syncSoon);
+	document.addEventListener('fullscreenchange', syncSoon);
+	document.addEventListener('webkitfullscreenchange', syncSoon);
+	if (typeof mqPortrait.addEventListener === 'function') {
+		mqPortrait.addEventListener('change', syncSoon);
+		mqCoarse.addEventListener('change', syncSoon);
+	} else if (typeof mqPortrait.addListener === 'function') {
+		mqPortrait.addListener(syncSoon);
+		mqCoarse.addListener(syncSoon);
+	}
+	sync();
 }());
 		</script>
 	</body>
