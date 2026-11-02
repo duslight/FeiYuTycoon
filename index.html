@@ -438,6 +438,45 @@ const engine = new Engine(GODOT_CONFIG);
 	sync();
 }());
 		</script>
+		<script>
+/* ===== FAVICON-GUARD v1 =====
+ * Godot calls DisplayServer::window_set_icon() during boot, which reaches
+ * _godot_js_display_window_icon_set() and rewrites <link id="-gd-engine-icon">
+ * with a blob: URL built from the project icon (res://icon.svg). That is why the
+ * tab flashed the fish and then fell back to the Godot robot. Pin our icon back.
+ */
+(function () {
+	var LINK_ID = '-gd-engine-icon';
+	var ICON_HREF = 'index.icon.png?v=2';
+	var hits = 0;
+
+	window.__faviconGuardHits = function () { return hits; };
+
+	function ensure() {
+		var link = document.getElementById(LINK_ID);
+		if (!link) {
+			link = document.createElement('link');
+			link.rel = 'icon';
+			link.type = 'image/png';
+			link.id = LINK_ID;
+			document.head.appendChild(link);
+		}
+		if (link.getAttribute('href') !== ICON_HREF) {
+			hits += 1;
+			link.setAttribute('href', ICON_HREF);
+		}
+	}
+
+	var observer = new MutationObserver(ensure);
+	observer.observe(document.head, {
+		childList: true,
+		subtree: true,
+		attributes: true,
+		attributeFilter: ['href'],
+	});
+	ensure();
+}());
+		</script>
 	</body>
 </html>
 
